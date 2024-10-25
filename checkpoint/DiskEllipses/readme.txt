@@ -1,0 +1,1 @@
+This is the model trained on DiskEllipses using the dds_unet with ddpm. 
