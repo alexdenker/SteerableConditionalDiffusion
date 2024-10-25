@@ -1,0 +1,14 @@
+
+
+*.pyc
+
+results/
+
+checkpoint/AAPM/vp
+checkpoint/DiskEllipses/uncond_diffusion_ellipses.pt
+
+
+run.txt
+start_scripts.py 
+compare_runs.py
+
