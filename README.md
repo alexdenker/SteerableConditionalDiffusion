@@ -8,7 +8,7 @@ Riccardo Barbano*, Alexander Denker*, Hyungjin Chung*, Tae Hoon Roh, Simon Arrid
 Denoising diffusion models have emerged as the go-to generative framework for solving inverse problems in imaging. A critical concern regarding these models is their performance on out-of-distribution tasks, which remains an under-explored challenge. Using a diffusion model on an out-of-distribution dataset, realistic reconstructions can be generated, but with hallucinating image features that are uniquely present in the training dataset. To address this discrepancy during train-test time and improve reconstruction accuracy, we introduce a novel test-time-adaptation sampling framework called Steerable Conditional Diffusion. Specifically, this framework adapts the diffusion model, concurrently with image reconstruction, based solely on the information provided by the available measurement. Utilising our proposed method, we achieve substantial enhancements in out-of-distribution performance across diverse imaging modalities, advancing the robust deployment of denoising diffusion models in real-world applications. 
 
 
-![deft](example_imgs/ComparisonWalnut.png)
+![Comparison](example_imgs/ComparisonWalnut.png)
 
 ## Usage
 
@@ -33,7 +33,9 @@ There are a number of hyperparameters which can be tuned:
 K: dimensions of the LoRA model 
 r: number of adaptation iteration per sampling step
 lr: learning rate for LoRA
-skip: skip the adaptation at certain sampling steps (increase sampling step, but reduce performance)
+skip: skip the adaptation at some sampling steps 
+    (increase sampling time, but reduce performance)
+    skip=1: adaptation is performed at every step
 gamma: strength of the regularisation in the conditional step
 alphatv: optional, strength of the additional TV regularisation
 ```

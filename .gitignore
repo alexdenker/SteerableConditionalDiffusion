@@ -12,3 +12,4 @@ run.txt
 start_scripts.py 
 compare_runs.py
 
+checkpoint/AAPM/256_sorted/256_sorted/L067/*.npy

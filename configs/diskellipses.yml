@@ -1,0 +1,49 @@
+data:
+    dataset: "DiskEllipses"
+    image_size: 256
+    channels: 1
+    model_path: "checkpoint/DiskEllipses/uncond_diffusion_ellipses.pt"
+
+training:
+    im_size: 256
+    length: 32000
+    val_length: 1000  # 10
+    stddev: 0.01
+    diameter: 0.4745
+    num_n_ellipse: 140
+
+model:
+    type: "openai"
+    in_channels: 1
+    out_channels: 1
+    num_channels: 256
+    num_heads: 4
+    num_res_blocks: 1
+    attention_resolutions: "16"
+    dropout: 0.0
+    resamp_with_conv: true
+    learn_sigma: false
+    use_scale_shift_norm: true
+    use_fp16: false
+    resblock_updown: true
+    num_heads_upsample: -1
+    var_type: 'fixedsmall'
+    num_head_channels: 64
+    image_size: 256
+    class_cond: false
+    use_new_attention_order: false
+
+diffusion:
+    beta_schedule: linear
+    beta_start: 0.0001
+    beta_end: 0.02
+    num_diffusion_timesteps: 1000
+    
+sampling:
+    batch_size: 1
+
+time_travel:
+    T_sampling: 250
+    travel_length: 1 
+    travel_repeat: 1 
+
