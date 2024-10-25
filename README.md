@@ -17,9 +17,9 @@ The goal in SCD is to fine-tune a pre-trained diffusion model to increase the pe
 
 We exploit LoRA to fine-tune the diffusion model during sampling time, such that Tweedies estimate is consitent with the measurements. In particular, for each sampling step we solve the optimisation problem
 
-$$ \min_{\Delta \theta} \frac{1}{2} \| A \hat{x}_0^t(\Delta \theta) - y \|^2 +  \alpha \mathcal{R}(\hat{x}_0^t(\Delta \theta)) $$
+$$ \min_{\Delta \theta} \frac{1}{2} || A \hat{x}_0^t(\Delta \theta) - y ||^2 +  \alpha R(\hat{x}_0^t(\Delta \theta)) $$
 
-where $\Delta \theta$ are the LoRA parameter, $A$ the forward operator, $y$ the measurements and $\hat{x}_0^t$ Tweedies estimate at time step $t$. In addition, we can incorporate an additional regulariser $\mathcal{R}$, weighted by a parameter $\alpha$. 
+where $\Delta \theta$ are the LoRA parameter, $A$ the forward operator, $y$ the measurements and $\hat{x}_0^t$ Tweedies estimate at time step $t$. In addition, we can incorporate an additional regulariser $R$, weighted by a parameter $\alpha$. 
 
 ## Usage
 
