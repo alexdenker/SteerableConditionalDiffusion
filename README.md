@@ -10,6 +10,17 @@ Denoising diffusion models have emerged as the go-to generative framework for so
 
 ![Comparison](example_imgs/ComparisonWalnut.png)
 
+
+### Method
+
+The goal in SCD is to fine-tune a pre-trained diffusion model to increase the performance on out-of-distribution data. However, we also observe that SCD is able to slighty boost the performance on in-distribution data. 
+
+We exploit LoRA to fine-tune the diffusion model during sampling time, such that Tweedies estimate is consitent with the measurements. In particular, for each sampling step we solve the optimisation problem
+
+$$ \min_{\Delta \theta} \frac{1}{2} \| A \hat{x}_0^t(\Delta \theta) - y \|^2 +  \alpha \mathcal{R}(\hat{x}_0^t(\Delta \theta)) $$
+
+where $\Delta \theta$ are the LoRA parameter, $A$ the forward operator, $y$ the measurements and $\hat{x}_0^t$ Tweedies estimate at time step $t$. In addition, we can incorporate an additional regulariser $\mathcal{R}$, weighted by a parameter $\alpha$. 
+
 ## Usage
 
 The pre-trained diffusion models are availabe at 
