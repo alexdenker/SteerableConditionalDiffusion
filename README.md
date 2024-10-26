@@ -1,6 +1,6 @@
 # [Steerable Condtional Diffusion](https://arxiv.org/abs/2308.14409) 
 
-Riccardo Barbano*, [Alexander Denker](https://alexdenker.github.io/)*, [Hyungjin Chung](https://www.hj-chung.com/)*, Tae Hoon Roh, Simon Arridge, Peter Maass, Bangti Jin, Jong Chul Ye
+Riccardo Barbano*, [Alexander Denker*](https://alexdenker.github.io/), [Hyungjin Chung*](https://www.hj-chung.com/)*, Tae Hoon Roh, Simon Arridge, Peter Maass, Bangti Jin, Jong Chul Ye
 
 
 #### Abstract
