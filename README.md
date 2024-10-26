@@ -23,13 +23,12 @@ where $\Delta \theta$ are the LoRA parameter, $A$ the forward operator, $y$ the 
 
 ## Usage
 
-The pre-trained diffusion models are availabe at 
+The pre-trained diffusion models and test data are availabe at 
 
 | Description                          | Path |
 |--------------------------------------|------|
 | Unconditional diffusion for Ellipses | https://drive.google.com/file/d/1_N_lcsZKkHfSHo31qvHh_c8AwgshGobJ/view?usp=sharing     |
-| Unconditional diffusion for AAPM     |      |
-
+| Unconditional diffusion for AAPM     |  https://www.dropbox.com/scl/fo/mlkwofr24nmsnzixj5u4d/AI-JOLUOAzklINnr8FdKpdk?rlkey=p4bj5ny58tngsjd1j46iyoqh6&e=1&st=lba2c97z&dl=0    |
 
 ### Example 
 
