@@ -58,7 +58,7 @@ If you find this work helpful please cite:
 
 ```
 @article{barbano2023steerable,
-  title={teerable Conditional Diffusion for Out-of-Distribution Adaptation in Medical Image Reconstruction},
+  title={Steerable Conditional Diffusion for Out-of-Distribution Adaptation in Medical Image Reconstruction},
   author={Barbano, Riccardo and Denker, Alexander and Chung, Hyungjin and Roh, Tae Hoon and Arridge, Simon and Maass, Peter and Jin, Bangti and Ye, Jong Chul},
   journal={arXiv preprint arXiv:2308.14409},
   year={2023}
