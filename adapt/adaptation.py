@@ -56,28 +56,19 @@ def _score_model_adpt(
         """ 
         Implement LoRA: https://arxiv.org/pdf/2106.09685.pdf 
 
-        Adding LoRA modules to nn.Conv1d, nn.Conv2d (should we also add to nn.Linear?)
-         + retraining all biases (only a negligible number of parameters)
+        Adding LoRA modules to nn.Conv1d, nn.Conv2d 
+        
         """
         score.requires_grad_(False)
 
-        # should we also do something to the last layer?
-        for name, param in score.named_parameters():
-            #print(name)
-            if "bias" in name and not "emb_layers" in name:
-                param.requires_grad = True
-        
-        #print(score.out)
-        
-        inject_trainable_lora_extended(score, r=r) 
+        require_grad_params, names = inject_trainable_lora_extended(score, r=r) 
 
         new_num_params = sum([p.numel() for p in score.parameters()])
         trainable_params = sum([p.numel() for p in score.parameters() if p.requires_grad])
         print(f'% of trainable params: {trainable_params/new_num_params*100}')
 
-        score.requires_grad_(True)
-
-
+        return score, require_grad_params
+        
     else: 
         raise NotImplementedError
     

@@ -2,6 +2,7 @@
 import torch
 from omegaconf import DictConfig
 from tqdm import tqdm
+import itertools 
 
 from models.classifier_guidance_model import ClassifierGuidanceModel
 from .ddim import DDIM
@@ -78,11 +79,12 @@ class SCD(DDIM):
 
     def sample(self, x, y, ts, **kwargs):
         
-        _score_model_adpt(score=self.model.model,
+        _, trainable_params = _score_model_adpt(score=self.model.model,
                           method="lora",
                           r=self.r)
-        params_with_grad = [param for param in self.model.model.parameters() if param.requires_grad]
         
+        #params_with_grad = [param for param in self.model.model.parameters() if param.requires_grad]
+        #print(params_with_grad)
         xt = self.initialize(x, y, ts, **kwargs)
         n = xt.size(0)
         ss = [-1] + list(ts[:-1])
@@ -92,12 +94,16 @@ class SCD(DDIM):
         
         rhs = self.H.H_adjoint(y)
         self.model.model.eval()
-        optim = torch.optim.Adam(params_with_grad, lr=self.lr, weight_decay=0.0)
+        optim = torch.optim.Adam(itertools.chain(*trainable_params), lr=self.lr, weight_decay=0.0)
 
         adapt_ts = list(ts[::self.skip])
         adapt_ts.extend(list(ts[0:4]))
 
         for ti, si in tqdm(zip(reversed(ts), reversed(ss)), total=len(ts)):
+            
+            # for LORA training other weights in the model should not change, as for example the bias here
+            #print(self.model.model.out[-1].bias)
+
             t = torch.ones(n).to(x.device).long() * ti
             s = torch.ones(n).to(x.device).long() * si
             alpha_t = self.diffusion.alpha(t).view(-1, 1, 1, 1)
@@ -115,8 +121,7 @@ class SCD(DDIM):
 
             with torch.enable_grad():
                 _tune_lora_scale(self.model.model, scale=1.0)
-                self.model.model.eval()
-                
+
                 # skip adaptation steps to make sampling faster 
                 if ti in adapt_ts:
                     for _ in range(self.K):
@@ -128,8 +133,9 @@ class SCD(DDIM):
                         #xhat = x0_pred - weighting_gamma * self.H.H_adjoint(self.H.H(x0_pred) - y)  #cg(op=op,x=x0_pred, rhs=noisy_rhs, n_iter=self.max_iter)
                         xhat = cg(op=op,x=x0_pred, rhs=noisy_rhs, n_iter=self.max_iter)
 
-
+                        
                         loss = torch.mean((self.H.H(xhat) - y)**2) + self.alpha_tv * tv_loss(xhat)
+
                         loss.backward()
 
                         optim.step()

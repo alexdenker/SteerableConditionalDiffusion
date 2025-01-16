@@ -284,7 +284,7 @@ def inject_trainable_lora_extended(
     target_replace_module: Set[str] = UNET_EXTENDED_TARGET_REPLACE,
     include_blocks: Set[str] = ['input_blocks', 'middle_block', 'output_blocks', 'out'],
     r: int = 4
-) -> None:
+):
     """
     inject lora into model, and returns lora parameter groups.
     """
@@ -293,9 +293,9 @@ def inject_trainable_lora_extended(
     names = []
 
     for _module, name, _child_module in _find_modules(
-        _include_blocks_in_model(model, include_blocks), target_replace_module, search_class=[nn.Conv1d, nn.Conv2d]
+        _include_blocks_in_model(model, include_blocks), target_replace_module, search_class=[nn.Conv1d, nn.Conv2d, nn.Linear]
     ):
-        
+
         if _child_module.__class__ == nn.Linear:
             weight = _child_module.weight
             bias = _child_module.bias
@@ -306,7 +306,6 @@ def inject_trainable_lora_extended(
                 r=r,
             )
             _tmp.linear.weight = weight
-            assert not _tmp.linear.weight.requires_grad 
             if bias is not None:
                 _tmp.linear.bias = bias
         elif _child_module.__class__ == nn.Conv2d:
@@ -325,7 +324,6 @@ def inject_trainable_lora_extended(
             )
 
             _tmp.conv.weight = weight
-            assert not _tmp.conv.weight.requires_grad 
             if bias is not None:
                 _tmp.conv.bias = bias
         elif _child_module.__class__ == nn.Conv1d:
@@ -344,7 +342,6 @@ def inject_trainable_lora_extended(
             )
 
             _tmp.conv.weight = weight
-            assert not _tmp.conv.weight.requires_grad 
             if bias is not None:
                 _tmp.conv.bias = bias
 
@@ -353,5 +350,12 @@ def inject_trainable_lora_extended(
             _tmp.to(_child_module.bias.device).to(_child_module.bias.dtype)
 
         _module._modules[name] = _tmp
+
+        require_grad_params.append(_module._modules[name].lora_up.parameters())
+        require_grad_params.append(_module._modules[name].lora_down.parameters())
+
         _module._modules[name].lora_up.weight.requires_grad = True
         _module._modules[name].lora_down.weight.requires_grad = True
+        names.append(name)
+
+    return require_grad_params, names
