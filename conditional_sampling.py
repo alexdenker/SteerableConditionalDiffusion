@@ -280,6 +280,9 @@ def coordinator(args):
             model.eval()
             
             classifier_model = ClassifierGuidanceModel(model=model, classifier=None, diffusion=sde, cfg=None)
+
+            # re-initialise SCD with clean model
+            sampler = SCD(model=classifier_model, cfg=sampl_config, H=ForwardModel(forward_op))
         elif method == "dps":
             _, x_mean = sampler.sample(x, y_noise, ts = ts)
         elif method == "dds":
