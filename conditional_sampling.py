@@ -5,16 +5,18 @@ import numpy as np
 import torch
 import yaml
 import time 
+
 import matplotlib.pyplot as plt 
 
 from models.utils import create_model
 from models.diffusion import Diffusion
 from models.classifier_guidance_model import ClassifierGuidanceModel
-from algos.ddim import DDIM
 from algos.reddiff import REDDIFF
 from algos.scd import SCD
 from algos.dps import DPS
 from algos.dds import DDS
+from algos.scd_full import SCDFull
+from algos.scd_scalar import SCDScalar
 
 from dataset.aapm import AAPMDataset
 
@@ -64,11 +66,17 @@ parser.add_argument('--max_iter', default=3)
 parser.add_argument('--gamma', default=10)
 
 # params for SCD
-parser.add_argument("--K", default=12)
-parser.add_argument("--r", default=8)
+parser.add_argument("--K", default=12) # Dimension of LoRA
+parser.add_argument("--r", default=8) # Number of Adaptation steps 
 parser.add_argument('--alphatv', default=1e-6)
 parser.add_argument('--skip', default=20)
 
+def calculate_psnr(img1, img2, max_value=1):
+    """"Calculating peak signal-to-noise ratio (PSNR) between two images."""
+    mse = np.mean((np.array(img1, dtype=np.float32) - np.array(img2, dtype=np.float32)) ** 2)
+    if mse == 0:
+        return 100
+    return 20 * np.log10(max_value / (np.sqrt(mse)))
 
 def coordinator(args):
 
@@ -101,7 +109,7 @@ def coordinator(args):
     elif test_on == "ellipses":
         dataset  = TensorDataset(torch.load(f"dataset/disk_ellipses_{part}_256.pt"))
     elif test_on == "walnut":
-        dataset  = TensorDataset(torch.load(f"dataset/walnut.pt"))
+        dataset  = TensorDataset(torch.load("dataset/walnut.pt", weights_only=True))
     else:
         raise NotImplementedError
 
@@ -143,6 +151,28 @@ def coordinator(args):
                 "lr": float(args.lr),
                 "max_iter": int(args.max_iter),
                 "alphatv": float(args.alphatv),
+                "skip": int(args.skip)
+                },
+            "dataset": 
+            {"image_size": 256, 
+            "channels": 1},
+            "exp": { 
+                "save_evolution": False
+            },
+            "forward_op": {
+                "num_angles": int(args.num_angles),
+                "sigma_y":float(args.noise_std)
+            }
+        }
+    elif method == "scd_full" or method == "scd_scalar":
+        cfg_sampl = {
+            "algo": 
+                {"awd": args.awd,
+                "eta": float(args.eta), 
+                "gamma": float(args.gamma),
+                "K": int(args.K),
+                "lr": float(args.lr),
+                "max_iter": int(args.max_iter),
                 "skip": int(args.skip)
                 },
             "dataset": 
@@ -235,6 +265,10 @@ def coordinator(args):
         sampler = DPS(model=classifier_model, cfg=sampl_config, H=ForwardModel(forward_op))
     elif method == "dds":
         sampler = DDS(model=classifier_model, cfg=sampl_config, H=ForwardModel(forward_op))
+    elif method == "scd_full":
+        sampler = SCDFull(model=classifier_model, cfg=sampl_config, H=ForwardModel(forward_op))
+    elif method == "scd_scalar":
+        sampler = SCDScalar(model=classifier_model, cfg=sampl_config, H=ForwardModel(forward_op))
     else:
         raise NotImplementedError
 
@@ -253,13 +287,14 @@ def coordinator(args):
 
         if y == None:
             y = forward_op.A(x)
-            print("y: ", y.min(), y.max())
+            #print("y: ", y.min(), y.max())
             y_noise = y + cfg_sampl["forward_op"]["sigma_y"] * torch.mean(torch.abs(y)) * torch.randn_like(y)
             y_noise[y_noise < 0] = 0
             x_fbp = forward_op.A_dagger(y_noise)
-            
-            print(y_noise.min(), y_noise.max())
-
+            #x_adj = forward_op.A_adjoint(y_noise)
+            #print("Noisy measurements: ", y_noise.min(), y_noise.max())
+            #print("FBP: ", x_fbp.min(), x_fbp.max())
+            #print("Adjoint: ", x_adj.min(), x_adj.max())
 
         ts = torch.arange(0, sde.num_diffusion_timesteps).to(device)
 
@@ -268,7 +303,7 @@ def coordinator(args):
             x_mean = mu.detach().cpu()
             #print(x0_pred.shape, mu.shape)
         elif method == "scd":
-            ts = torch.arange(0, sde.num_diffusion_timesteps).to(device)[::5]#[::20]
+            ts = torch.arange(0, sde.num_diffusion_timesteps).to(device)[::10]#[::20]
 
             x_mean = sampler.sample(x, y_noise, ts = ts)
             
@@ -283,6 +318,14 @@ def coordinator(args):
 
             # re-initialise SCD with clean model
             sampler = SCD(model=classifier_model, cfg=sampl_config, H=ForwardModel(forward_op))
+        elif method == "scd_full":
+            ts = torch.arange(0, sde.num_diffusion_timesteps).to(device)[::5]#[::20]
+
+            x_mean = sampler.sample(x, y_noise, ts = ts)
+        elif method == "scd_scalar":
+            ts = torch.arange(0, sde.num_diffusion_timesteps).to(device)[::2]#[::20]
+
+            x_mean = sampler.sample(x, y_noise, ts = ts)        
         elif method == "dps":
             _, x_mean = sampler.sample(x, y_noise, ts = ts)
         elif method == "dds":
@@ -293,15 +336,28 @@ def coordinator(args):
         else:
             raise NotImplementedError
 
-        fig, (ax1, ax2, ax3) = plt.subplots(1,3)
+        psnr = calculate_psnr(x[0,0].cpu().numpy(), x_mean[0,0].detach().cpu().numpy(), max_value=1.0)
+        psnr_fbp = calculate_psnr(x[0,0].cpu().numpy(), x_fbp[0,0].detach().cpu().numpy(), max_value=1.0)
+        print("PSNR: ", psnr)
+        fig, (ax1, ax2, ax3) = plt.subplots(1,3,figsize=(13,6))
 
-        ax1.imshow(x[0,0].cpu().numpy(), cmap="gray")
+        im = ax1.imshow(x[0,0].cpu().numpy(), cmap="gray")
+        ax1.set_title("Groundtruth")
+        fig.colorbar(im, ax=ax1)
         ax2.imshow(x_fbp[0,0].cpu().numpy(), cmap="gray")
+        ax2.set_title("FBP, PNSR = " + str(np.round(psnr_fbp, 3)))
+        fig.colorbar(im, ax=ax2)
+
         ax3.imshow(x_mean[0,0].detach().cpu().numpy(), cmap="gray")
+        ax3.set_title("Diffusion Model, PNSR = " + str(np.round(psnr, 3)))
+
+        fig.colorbar(im, ax=ax3)
 
         plt.savefig(os.path.join(save_img_dir, f"reco_{i}.png"))
-        plt.close()
+        plt.show()
+        #plt.close()
         
+
         np.save(os.path.join(save_img_dir, "reco_{}.npy".format(i)), x_mean.cpu().numpy())
         np.save(os.path.join(save_img_dir, "gt_{}.npy".format(i)), x.cpu().numpy())
 

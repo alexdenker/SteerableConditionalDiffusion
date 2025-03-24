@@ -133,7 +133,7 @@ class SCD(DDIM):
                         #xhat = x0_pred - weighting_gamma * self.H.H_adjoint(self.H.H(x0_pred) - y)  #cg(op=op,x=x0_pred, rhs=noisy_rhs, n_iter=self.max_iter)
                         xhat = cg(op=op,x=x0_pred, rhs=noisy_rhs, n_iter=self.max_iter)
 
-                        
+                        print(self.alpha_tv, tv_loss(xhat), torch.mean((self.H.H(xhat) - y)**2))
                         loss = torch.mean((self.H.H(xhat) - y)**2) + self.alpha_tv * tv_loss(xhat)
 
                         loss.backward()

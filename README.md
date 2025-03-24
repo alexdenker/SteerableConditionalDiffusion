@@ -42,7 +42,7 @@ conda activate scd
 An example for conditional sampling of the **walnut** with a diffusion model trained on synthetic **ellipses**. Here, the forward operator is a parallel-beam Radon transform with 60 angles and we add 1% relative Gaussian noise:
 
 ```python
-python conditional_sampling.py --train_on=ellipses --test_on=walnut --method=scd --K=16 --r=8   --lr=1e-4  --gamma=0.1  --skip=20 --num_angles=60 --noise_std=0.01 --alphatv=1e-3
+python conditional_sampling.py --train_on=ellipses --test_on=walnut --method=scd --K=18 --r=12 --lr=3e-4  --gamma=0.2  --skip=5 --num_angles=60 --noise_std=0.01 --alphatv=1e-3
 ```
 
 There are a number of hyperparameters which can be tuned:
