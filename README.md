@@ -30,12 +30,19 @@ The pre-trained diffusion models and test data are availabe at
 | Unconditional diffusion for Ellipses | https://drive.google.com/file/d/1_N_lcsZKkHfSHo31qvHh_c8AwgshGobJ/view?usp=sharing     |
 | Unconditional diffusion for AAPM     |  https://www.dropbox.com/scl/fo/mlkwofr24nmsnzixj5u4d/AI-JOLUOAzklINnr8FdKpdk?rlkey=p4bj5ny58tngsjd1j46iyoqh6&e=1&st=lba2c97z&dl=0    |
 
+Create a conda environment and install required modules (mainly pytorch).
+
+```
+conda env create -f environment.yml
+conda activate scd
+```
+
 ### Example 
 
-An example for conditional sampling of the **walnut** with a diffusion model trained on synthetic **ellipses**. Here, the forward operator is a parallel-beam Radon transform with 60 angles and we add 5% relative Gaussian noise:
+An example for conditional sampling of the **walnut** with a diffusion model trained on synthetic **ellipses**. Here, the forward operator is a parallel-beam Radon transform with 60 angles and we add 1% relative Gaussian noise:
 
 ```python
-python conditional_sampling.py --train_on=ellipses --test_on=walnut --method=scd --K=16 --r=8   --lr=1e-4  --gamma=0.1  --skip=20 --num_angles=60 --noise_std=0.05 --alphatv=1e-3
+python conditional_sampling.py --train_on=ellipses --test_on=walnut --method=scd --K=16 --r=8   --lr=1e-4  --gamma=0.1  --skip=20 --num_angles=60 --noise_std=0.01 --alphatv=1e-3
 ```
 
 There are a number of hyperparameters which can be tuned:
@@ -50,6 +57,24 @@ gamma: strength of the regularisation in the conditional step
 alphatv: optional, strength of the additional TV regularisation
 ```
 
+## Baseline Methods 
+
+Here, we consider a parallel-beam forward operator with 60 equidistant angles and $1\%$ relative Gaussian noise. 
+
+#### Diffusion Posterior Sampling (DPS)
+We compare against [DPS](https://arxiv.org/abs/2209.14687). We use $1000$ DDPM sampling steps.
+
+On the in-distribution task "Ellipses to Ellipses" the following command should get good results.
+
+```python
+python conditional_sampling.py --train_on=ellipses --test_on=ellipses --method=dps --num_angles=60 --noise_std=0.01 --grad_term_weight 9e-3 --eta 1.0
+```
+
+Whereas the result for "Ellipses to Walnut" will show strong artifacts.
+
+```python
+python conditional_sampling.py --train_on=ellipses --test_on=walnut --method=dps --num_angles=60 --noise_std=0.01 --grad_term_weight 9e-3 --eta 1.0
+```
 
 
 ## Citation
@@ -57,10 +82,11 @@ alphatv: optional, strength of the additional TV regularisation
 If you find this work helpful please cite:
 
 ```
-@article{barbano2023steerable,
+@article{barbano2025steerable,
   title={Steerable Conditional Diffusion for Out-of-Distribution Adaptation in Medical Image Reconstruction},
   author={Barbano, Riccardo and Denker, Alexander and Chung, Hyungjin and Roh, Tae Hoon and Arridge, Simon and Maass, Peter and Jin, Bangti and Ye, Jong Chul},
-  journal={arXiv preprint arXiv:2308.14409},
-  year={2023}
+  journal={IEEE Transactions on Medical Imaging},
+  year={2025},
+  publisher={IEEE}
 }
 ```

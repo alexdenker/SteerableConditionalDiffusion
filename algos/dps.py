@@ -52,8 +52,10 @@ class DPS(DDIM):
             xt = xt.clone().to('cuda').requires_grad_(True)
 
             et, x0_pred = self.model(xt, y, t, scale=1.0)
-            mat_norm = ((y_0 - H.H(x0_pred)).reshape(n, -1) ** 2).sum(dim=1).sqrt().detach()
-            mat = ((y_0 - H.H(x0_pred)).reshape(n, -1) ** 2).sum()
+            Hx = H.H(x0_pred)
+
+            mat_norm = ((y_0 - Hx).reshape(n, -1) ** 2).sum(dim=1).sqrt().detach()
+            mat = ((y_0 - Hx).reshape(n, -1) ** 2).sum()
 
             grad_term = torch.autograd.grad(mat, xt, retain_graph=True)[0]
 
