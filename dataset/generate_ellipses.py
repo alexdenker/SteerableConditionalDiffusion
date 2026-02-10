@@ -9,18 +9,11 @@ import torch
 from torch import Tensor
 from itertools import repeat
 
-try:
-    from odl import uniform_discr
-    from odl.phantom import ellipsoid_phantom
-except ModuleNotFoundError:
-    print("Please install ODL: pip install git+https://github.com/odlgroup/odl")    
-
 class EllipsesDataset(torch.utils.data.IterableDataset):
     """
     Dataset with images of multiple random ellipses.
-    This dataset uses :meth:`odl.phantom.ellipsoid_phantom` to create
-    the images. The images are normalized to have a value range of ``[0., 1.]`` with a
-    background value of ``0.``.
+    Creates images by rasterizing random ellipses. The images are normalized 
+    to have a value range of ``[0., 1.]`` with a background value of ``0.``.
     """
 
     def __init__(
@@ -32,13 +25,17 @@ class EllipsesDataset(torch.utils.data.IterableDataset):
         max_n_ellipse: int = 70,
     ):
         self.shape = shape
-        min_pt = [-self.shape[0] / 2, -self.shape[1] / 2]
-        max_pt = [self.shape[0] / 2, self.shape[1] / 2]
-        self.space = uniform_discr(min_pt, max_pt, self.shape)
         self.length = length
         self.max_n_ellipse = max_n_ellipse
         self.ellipses_data = []
         self.setup_fold(fixed_seed=fixed_seed, fold=fold)
+
+        # Create coordinate grids
+        h, w = self.shape
+        yy, xx = torch.meshgrid(torch.arange(h, dtype=torch.float32), 
+                                 torch.arange(w, dtype=torch.float32), indexing='ij')
+        self.yy = yy
+        self.xx = xx
         super().__init__()
 
     def setup_fold(self, fixed_seed: int = 1, fold: str = "train"):
@@ -66,13 +63,58 @@ class EllipsesDataset(torch.utils.data.IterableDataset):
             self.ellipses_data.append(ellipsoids)
 
     def _generate_item(self, idx: int) -> Tensor:
+        """Rasterize ellipses onto an image using pure PyTorch."""
         ellipsoids = self.ellipses_data[idx]
-        image = ellipsoid_phantom(self.space, ellipsoids)
-        # normalize the foreground (all non-zero pixels) to [0., 1.]
-        image[np.array(image) != 0.0] -= np.min(image)
-        image /= np.max(image)
+        h, w = self.shape
+        
+        image = torch.zeros((h, w), dtype=torch.float32)
+        
+        # Center coordinates
+        center_h, center_w = h / 2.0, w / 2.0
+        
+        for ellipse_params in ellipsoids:
+            v, a1, a2, x, y, rot = ellipse_params
+            
+            # Skip if intensity is zero or very small
+            if v <= 0.0:
+                continue
+            
+            # Convert normalized coords to pixel coords
+            center_x = center_w + float(x) * center_w
+            center_y = center_h + float(y) * center_h
+            
+            # Semi-axes in pixels
+            axis_a = max(1.0, float(a1) * center_h)
+            axis_b = max(1.0, float(a2) * center_h)
+            
+            # Rotation angle
+            angle = float(rot)
+            
+            # Translate coordinates relative to ellipse center
+            dx = self.xx - center_x
+            dy = self.yy - center_y
 
-        return torch.from_numpy(image.asarray()[None]).float()  # add channel dim
+            # Rotate coordinates
+            cos_a = np.cos(angle)
+            sin_a = np.sin(angle)
+            dx_rot = dx * cos_a + dy * sin_a
+            dy_rot = -dx * sin_a + dy * cos_a
+            
+            # Ellipse equation: (x/a)^2 + (y/b)^2 <= 1
+            ellipse_mask = (dx_rot ** 2 / (axis_a ** 2) + 
+                           dy_rot ** 2 / (axis_b ** 2)) <= 1.0
+            
+            # Add ellipse contribution (soft blending for overlaps)
+            image = torch.where(ellipse_mask, 
+                               image + float(v), 
+                               image)
+        
+        # Normalize to [0, 1]
+        max_val = torch.max(image)
+        if max_val > 0:
+            image = image / max_val
+        
+        return image[None].float()  # add channel dim
 
     def __iter__(self) -> Iterator[Tensor]:
         it = repeat(None, self.length) if self.length is not None else repeat(None)
@@ -83,7 +125,6 @@ class EllipsesDataset(torch.utils.data.IterableDataset):
     def __getitem__(self, idx: int) -> Tensor:
         self._extend_ellipses_data(idx + 1)
         return self._generate_item(idx)
-
 
 def get_ellipses_dataset(
     fold: str = "train",
@@ -125,6 +166,7 @@ class DiskDistributedEllipsesDataset(EllipsesDataset):
             v = self.rng.uniform(-0.4, 1.0, (self.max_n_ellipse,))
             a1 = 0.2 * self.diameter * self.rng.exponential(1.0, (self.max_n_ellipse,))
             a2 = 0.2 * self.diameter * self.rng.exponential(1.0, (self.max_n_ellipse,))
+
             c_r = self.rng.triangular(
                 0.0, self.diameter, self.diameter, size=(self.max_n_ellipse,)
             )
@@ -136,6 +178,7 @@ class DiskDistributedEllipsesDataset(EllipsesDataset):
             v[n_ellipse:] = 0.0
             ellipsoids = np.stack((v, a1, a2, x, y, rot), axis=1)
             self.ellipses_data.append(ellipsoids)
+
 
 
 def get_disk_dist_ellipses_dataset(
